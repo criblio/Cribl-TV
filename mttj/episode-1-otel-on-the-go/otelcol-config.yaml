@@ -1,0 +1,64 @@
+# MTTJ Episode 1 - "OTel On the Go"
+# OpenTelemetry Collector config used on the EC2 host, exporting to a Cribl
+# Stream OTel Source over OTLP/gRPC (Cribl's default port for OTel gRPC is
+# 4317; OTel over HTTP on 4318 is NOT available on Cribl-managed Worker
+# Groups in Cribl.Cloud, which is why this speedrun uses gRPC).
+#
+# Replace <YOUR_CRIBL_OTEL_ENDPOINT> with your own Cribl Cloud URL, in the
+# form default.main.WORD-WORD-RANDOM.cribl.cloud (find it under Products >
+# Workspace > Data Sources in the Cribl UI). It's the FULL hostname already
+# ending in .cribl.cloud - don't append .cribl.cloud again.
+# Replace <YOUR_CLUSTER_LABEL> with whatever tag you want to use to identify
+# this host's traffic in Cribl.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+  hostmetrics:
+    collection_interval: 30s
+    scrapers:
+      cpu:
+      memory:
+      disk:
+      network:
+      load:
+
+processors:
+  batch:
+    send_batch_size: 1024
+    timeout: 5s
+  resource:
+    attributes:
+      - key: cribl.cluster
+        value: <YOUR_CLUSTER_LABEL>
+        action: upsert
+
+exporters:
+  otlp:
+    endpoint: <YOUR_CRIBL_OTEL_ENDPOINT>:4317
+    # tls:
+    #   insecure_skip_verify: true   # uncomment if you hit cert errors against your workspace
+  debug:
+    verbosity: basic
+
+service:
+  telemetry:
+    logs:
+      level: debug
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [resource, batch]
+      exporters: [otlp, debug]
+    metrics:
+      receivers: [otlp, hostmetrics]
+      processors: [resource, batch]
+      exporters: [otlp, debug]
+    logs:
+      receivers: [otlp]
+      processors: [resource, batch]
+      exporters: [otlp, debug]

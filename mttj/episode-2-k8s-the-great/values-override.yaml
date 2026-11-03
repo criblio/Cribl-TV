@@ -1,0 +1,30 @@
+# MTTJ Episode 2 - "K8s the Great"
+# Helm values override: helm install ... -f values-override.yaml ... edge
+#
+# The Cribl Edge Helm chart (https://github.com/criblio/helm-charts, chart
+# "edge") already does the heavy lifting for you by default:
+#   - deploys a DaemonSet (the chart only ships one template - it's not a
+#     switchable option, so one Cribl Edge Pod always lands on every node)
+#   - creates a ServiceAccount + read-only ClusterRole covering pods,
+#     nodes, nodes/stats, nodes/metrics, events, daemonsets, etc. - enough
+#     for the Kubernetes Logs/Metrics/Events Sources to read the cluster
+#   - mounts the host filesystem read-only (/ -> /hostfs) so Edge can see
+#     host processes and metrics
+#   - adds a toleration (operator: Exists) so it schedules on tainted
+#     nodes too
+#   - wires up CRIBL_K8S_POD (via the Kubernetes Downward API) and
+#     CRIBL_K8S_CPU_LIMIT for you
+# You don't need to write any of that yourself - this file only covers
+# what you actually have to decide.
+
+# If your cluster's certificate isn't one Cribl Edge can validate (common
+# with self-signed internal CAs), uncomment this:
+# extraEnv:
+#   CRIBL_K8S_TLS_REJECT_UNAUTHORIZED: "0"
+
+# cribl.leader (the CRIBL_DIST_LEADER_URL) is normally passed via --set on
+# the install command instead (see speedrun-commands.sh), so the auth
+# token doesn't end up committed to this file - but it can live here if
+# you're managing it through a sealed secret or GitOps pipeline instead:
+# cribl:
+#   leader: "tls://<YOUR_AUTH_TOKEN>@<YOUR_LEADER_HOST>:4200?group=<YOUR_FLEET_NAME>"
